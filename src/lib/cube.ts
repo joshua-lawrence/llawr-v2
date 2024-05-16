@@ -144,5 +144,5 @@ export default function useCube() {
     };
   }, [isDragging]);
 
-  return { faces, vertices, rotate, containerRef, rotation };
+  return { faces, vertices, rotate, containerRef, rotation, isDragging };
 }

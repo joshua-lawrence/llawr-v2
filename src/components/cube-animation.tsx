@@ -1,4 +1,5 @@
 "use client";
+import { cn } from "@/lib/cn";
 import useCube from "@/lib/cube";
 import { Vertex } from "@/lib/vertex";
 import React, { useEffect } from "react";
@@ -6,7 +7,7 @@ import React, { useEffect } from "react";
 export default function CubeAnimation() {
   const PLANE = 100;
   const SCALE = 50;
-  const { vertices, rotation, containerRef, faces } = useCube();
+  const { vertices, rotation, containerRef, faces, isDragging } = useCube();
 
   function project(v: Vertex) {
     return {
@@ -41,7 +42,10 @@ export default function CubeAnimation() {
 
   return (
     <div
-      className="absolute left-0 top-0 w-screen h-full z-0"
+      className={cn(
+        "absolute left-0 top-0 w-screen h-full z-0",
+        isDragging ? "cursor-grabbing z-50" : "cursor-grab"
+      )}
       ref={containerRef}
     >
       <div className="relative left-1/2 top-[150px] -translate-y-1/2 -translate-x-1/2 w-fit t-96">
