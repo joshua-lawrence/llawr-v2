@@ -17,6 +17,12 @@ export type RectangularPrism = [
 type PointerPosition = {
   clientX: number;
   clientY: number;
+  timestamp: number;
+};
+
+type Velocity = {
+  x: number;
+  y: number;
 };
 
 export default function useCube() {
@@ -25,7 +31,10 @@ export default function useCube() {
   const [prevPointer, setPrevPointer] = useState<PointerPosition>({
     clientX: 0,
     clientY: 0,
+    timestamp: 0,
   });
+  const [velocity, setVelocity] = useState<Velocity>({ x: 0.01, y: 0.02 });
+  const velocityRef = useRef<Velocity>({ x: 0.5, y: 0.2 });
   const [vertices, setVertices] = useState<RectangularPrism>([
     { x: -1, y: -1, z: -1 },
     { x: 1, y: -1, z: -1 },
@@ -50,6 +59,8 @@ export default function useCube() {
     y: 0,
     z: 0,
   });
+
+  const targetRotation = useRef<Quaternion>(rotation);
 
   const rotate = useCallback(
     (x: number, y: number, z: number, t: number) => {
@@ -83,7 +94,13 @@ export default function useCube() {
         multiplyQuaternion(yRotation, xRotation)
       );
 
-      const interpolatedRotation = slerp(rotation, newRotation, t);
+      targetRotation.current = newRotation;
+      const slerpT = Math.min(1, t);
+      const interpolatedRotation = slerp(
+        rotation,
+        targetRotation.current,
+        slerpT
+      );
 
       setRotation(interpolatedRotation);
       setVertices(
@@ -96,20 +113,58 @@ export default function useCube() {
   );
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isDragging) {
-        rotate(0, Math.random(), 0.5, 0.01);
+    if (isDragging) return;
+
+    const baseSpeed = 0.1;
+    const baseFriction = 0.95;
+    const speed = Math.sqrt(
+      velocityRef.current.x ** 2 + velocityRef.current.y ** 2
+    );
+    const friction = Math.max(baseFriction - (speed - baseSpeed) * 0.05, 0.8);
+    const minVelocity = 0.005;
+    let animationFrameId: number;
+
+    const animate = () => {
+      velocityRef.current = {
+        x: velocityRef.current.x * friction,
+        y: velocityRef.current.y * friction,
+      };
+
+      const speed = Math.sqrt(
+        velocityRef.current.x ** 2 + velocityRef.current.y ** 2
+      );
+
+      if (speed > minVelocity) {
+        rotate(-velocityRef.current.y * 0.5, velocityRef.current.x * 0.5, 0, 1);
+        animationFrameId = requestAnimationFrame(animate);
+      } else {
+        velocityRef.current = { x: 0, y: 0 };
+        setVelocity({ x: 0, y: 0 });
       }
-    }, 8);
-    return () => clearInterval(interval);
-  }, [rotate, isDragging]);
+    };
+
+    if (!isDragging && (velocity.x !== 0 || velocity.y !== 0)) {
+      velocityRef.current = velocity;
+      animate();
+    }
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isDragging, velocity, rotate]);
 
   const handlePointerDown = (event: PointerEvent) => {
     if (event.button === 0 || event.pointerType === "touch") {
       setIsDragging(true);
-      setPrevPointer({ clientX: event.clientX, clientY: event.clientY });
+      setPrevPointer({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        timestamp: event.timeStamp,
+      });
+      setVelocity({ x: 0, y: 0 });
 
-      // Capture the pointer to ensure we get all events
       if (containerRef.current) {
         containerRef.current.setPointerCapture(event.pointerId);
       }
@@ -121,13 +176,33 @@ export default function useCube() {
 
     const deltaX = event.clientX - prevPointer.clientX;
     const deltaY = event.clientY - prevPointer.clientY;
+    const deltaTime = event.timeStamp - prevPointer.timestamp;
+
+    if (deltaTime > 0) {
+      const maxSpeed = 2;
+      const rawVelocityX = deltaX / deltaTime;
+      const rawVelocityY = deltaY / deltaTime;
+
+      const magnitude = Math.sqrt(rawVelocityX ** 2 + rawVelocityY ** 2);
+      const scale = magnitude > maxSpeed ? maxSpeed / magnitude : 1;
+
+      const newVelocity = {
+        x: rawVelocityX * scale,
+        y: rawVelocityY * scale,
+      };
+      setVelocity(newVelocity);
+    }
 
     const sensitivity = 0.5;
     const rotationX = -deltaY * sensitivity;
     const rotationY = deltaX * sensitivity;
 
     rotate(rotationX, rotationY, 0, 1);
-    setPrevPointer({ clientX: event.clientX, clientY: event.clientY });
+    setPrevPointer({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      timestamp: event.timeStamp,
+    });
   };
 
   const handlePointerUp = (event: PointerEvent) => {
@@ -135,7 +210,6 @@ export default function useCube() {
       containerRef.current.releasePointerCapture(event.pointerId);
     }
     setIsDragging(false);
-    setRotation(rotation);
   };
 
   useEffect(() => {
