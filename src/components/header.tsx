@@ -4,27 +4,29 @@ import React from "react";
 
 export default function Header() {
   return (
-    <div className="flex justify-center w-full pb-16 select-none">
+    <div
+      className="flex justify-center w-full pb-16"
+      style={{ userSelect: "none", WebkitUserSelect: "none" }}
+    >
       <CubeAnimation />
-      <div className="flex flex-col gap-2 max-w-md select-none w-full justify-center">
-        <h1 className="text-2xl pt-72 text-center select-none">
+      <div className="flex flex-col gap-2 max-w-md w-full justify-center">
+        <h1 className="text-2xl pt-72 text-center pointer-events-none">
           Joshua Lawrence
         </h1>
-        <div className="relative flex gap-4 w-full z-50 background-white justify-center select-none">
-          {/* <a href="/projects">Projects</a>
-          <a href="/blog">Blog</a>
-          <a href="/resume">Resume</a> */}
+        <div className="relative flex gap-4 w-full z-50 background-white justify-center">
           <a
             href="https://github.com/joshua-lawrence/"
             target="_blank"
-            className="select-none"
+            className="pointer-events-auto"
+            style={{ userSelect: "none", WebkitUserSelect: "none" }}
           >
             Github
           </a>
           <a
             href="https://www.linkedin.com/in/joshuaglawrence/"
             target="_blank"
-            className="select-none"
+            className="pointer-events-auto"
+            style={{ userSelect: "none", WebkitUserSelect: "none" }}
           >
             LinkedIn
           </a>

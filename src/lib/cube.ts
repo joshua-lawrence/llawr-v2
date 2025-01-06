@@ -1,7 +1,6 @@
 import { degreesToRadians } from "@/lib/geometry";
 import { Quaternion, multiplyQuaternion, slerp } from "@/lib/quaternion";
 import { Vertex, rotateVertex } from "@/lib/vertex";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type RectangularPrism = [
@@ -15,11 +14,18 @@ export type RectangularPrism = [
   Vertex
 ];
 
+type PointerPosition = {
+  clientX: number;
+  clientY: number;
+};
+
 export default function useCube() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [prevMouseX, setPrevMouseX] = useState(0);
-  const [prevMouseY, setPrevMouseY] = useState(0);
+  const [prevPointer, setPrevPointer] = useState<PointerPosition>({
+    clientX: 0,
+    clientY: 0,
+  });
   const [vertices, setVertices] = useState<RectangularPrism>([
     { x: -1, y: -1, z: -1 },
     { x: 1, y: -1, z: -1 },
@@ -80,7 +86,6 @@ export default function useCube() {
       const interpolatedRotation = slerp(rotation, newRotation, t);
 
       setRotation(interpolatedRotation);
-
       setVertices(
         vertices.map((v) =>
           rotateVertex(v, interpolatedRotation)
@@ -99,28 +104,36 @@ export default function useCube() {
     return () => clearInterval(interval);
   }, [rotate, isDragging]);
 
-  const handleMouseDown = (event: MouseEvent) => {
-    setIsDragging(true);
-    setPrevMouseX(event.clientX);
-    setPrevMouseY(event.clientY);
+  const handlePointerDown = (event: PointerEvent) => {
+    if (event.button === 0 || event.pointerType === "touch") {
+      setIsDragging(true);
+      setPrevPointer({ clientX: event.clientX, clientY: event.clientY });
+
+      // Capture the pointer to ensure we get all events
+      if (containerRef.current) {
+        containerRef.current.setPointerCapture(event.pointerId);
+      }
+    }
   };
 
-  const handleMouseMove = (event: MouseEvent) => {
+  const handlePointerMove = (event: PointerEvent) => {
     if (!isDragging) return;
-    const deltaX = event.clientX - prevMouseX;
-    const deltaY = event.clientY - prevMouseY;
+
+    const deltaX = event.clientX - prevPointer.clientX;
+    const deltaY = event.clientY - prevPointer.clientY;
 
     const sensitivity = 0.5;
     const rotationX = -deltaY * sensitivity;
     const rotationY = deltaX * sensitivity;
 
     rotate(rotationX, rotationY, 0, 1);
-
-    setPrevMouseX(event.clientX);
-    setPrevMouseY(event.clientY);
+    setPrevPointer({ clientX: event.clientX, clientY: event.clientY });
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (event: PointerEvent) => {
+    if (containerRef.current) {
+      containerRef.current.releasePointerCapture(event.pointerId);
+    }
     setIsDragging(false);
     setRotation(rotation);
   };
@@ -128,18 +141,20 @@ export default function useCube() {
   useEffect(() => {
     const container = containerRef.current;
     if (container) {
-      container.addEventListener("mousedown", handleMouseDown);
-      container.addEventListener("mousemove", handleMouseMove);
-      container.addEventListener("mouseup", handleMouseUp);
-      container.addEventListener("mouseleave", handleMouseUp);
+      container.addEventListener("pointerdown", handlePointerDown);
+      container.addEventListener("pointermove", handlePointerMove);
+      container.addEventListener("pointerup", handlePointerUp);
+      container.addEventListener("pointerleave", handlePointerUp);
+      container.addEventListener("pointercancel", handlePointerUp);
     }
 
     return () => {
       if (container) {
-        container.removeEventListener("mousedown", handleMouseDown);
-        container.removeEventListener("mousemove", handleMouseMove);
-        container.removeEventListener("mouseup", handleMouseUp);
-        container.removeEventListener("mouseleave", handleMouseUp);
+        container.removeEventListener("pointerdown", handlePointerDown);
+        container.removeEventListener("pointermove", handlePointerMove);
+        container.removeEventListener("pointerup", handlePointerUp);
+        container.removeEventListener("pointerleave", handlePointerUp);
+        container.removeEventListener("pointercancel", handlePointerUp);
       }
     };
   }, [isDragging]);

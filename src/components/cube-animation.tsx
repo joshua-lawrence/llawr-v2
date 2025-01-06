@@ -2,12 +2,12 @@
 import { cn } from "@/lib/cn";
 import useCube from "@/lib/cube";
 import { Vertex } from "@/lib/vertex";
-import React, { useEffect } from "react";
+import React from "react";
 
 export default function CubeAnimation() {
   const PLANE = 100;
   const SCALE = 50;
-  const { vertices, rotation, containerRef, faces, isDragging } = useCube();
+  const { vertices, containerRef, isDragging } = useCube();
 
   function project(v: Vertex) {
     return {
@@ -21,35 +21,39 @@ export default function CubeAnimation() {
     return (
       <div
         key={i}
+        className="select-none pointer-events-none"
         style={{
           position: "absolute",
           left: `${x * SCALE}px`,
           top: `${y * SCALE}px`,
-          userSelect: "none",
+          WebkitUserSelect: "none",
+          WebkitTouchCallout: "none",
         }}
+        aria-hidden="true"
       >
         #
       </div>
     );
   };
 
-  const face = (f: number[], i: number) => {
-    const pVs = f.map((v) => project(vertices[v]));
-    const scaledPVs = pVs.map((v) => ({ x: v.x * SCALE, y: v.y * SCALE }));
-    const triangle1 = [scaledPVs[0], scaledPVs[1], scaledPVs[2]];
-    const triangle2 = [scaledPVs[2], scaledPVs[3], scaledPVs[0]];
-  };
-
   return (
     <div
       className={cn(
-        "absolute left-0 top-0 w-screen h-full z-0",
-        isDragging ? "cursor-grabbing z-50" : "cursor-grab"
+        "absolute left-0 top-0 w-screen h-full",
+        isDragging ? "cursor-grabbing z-50 touch-none" : "cursor-grab z-0",
+        "select-none touch-none", // Prevents text selection and touch events
+        "pointer-events-auto" // Ensures container can receive pointer events
       )}
+      style={{
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
+      }}
       ref={containerRef}
     >
-      <div className="relative left-1/2 top-[150px] -translate-y-1/2 -translate-x-1/2 w-fit t-96">
-        {/* {faces.map(face)} */}
+      <div
+        className="relative left-1/2 top-[150px] -translate-y-1/2 -translate-x-1/2 w-fit"
+        style={{ pointerEvents: isDragging ? "none" : "auto" }}
+      >
         {vertices.map(vertex)}
       </div>
     </div>
